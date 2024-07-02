@@ -18,35 +18,30 @@
 
 package org.wso2.carbon.identity.scim2.provider.resources;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.jaxrs.designator.PATCH;
-import org.wso2.carbon.identity.recovery.IdentityRecoveryConstants;
 import org.wso2.carbon.identity.scim2.common.impl.IdentitySCIMManager;
-import org.wso2.carbon.identity.scim2.common.utils.AdminAttributeUtil;
-import org.wso2.carbon.identity.scim2.common.utils.SCIMCommonUtils;
+import org.wso2.carbon.identity.scim2.common.utils.SCIMConfigProcessor;
 import org.wso2.carbon.identity.scim2.provider.util.SCIMProviderConstants;
 import org.wso2.carbon.identity.scim2.provider.util.SupportUtils;
+import org.wso2.charon3.core.config.SCIMConfigConstants;
 import org.wso2.charon3.core.exceptions.CharonException;
 import org.wso2.charon3.core.exceptions.FormatNotSupportedException;
 import org.wso2.charon3.core.extensions.UserManager;
 import org.wso2.charon3.core.protocol.SCIMResponse;
 import org.wso2.charon3.core.protocol.endpoints.UserResourceManager;
 import org.wso2.charon3.core.schema.SCIMConstants;
+import org.wso2.charon3.core.utils.ResourceManagerUtil;
 
+import java.util.Objects;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import static org.wso2.carbon.identity.scim2.provider.util.SupportUtils.buildCustomSchema;
-import static org.wso2.carbon.identity.scim2.provider.util.SupportUtils.getTenantDomain;
 import static org.wso2.carbon.identity.scim2.provider.util.SupportUtils.getTenantId;
 
 @Path("/")
 public class UserResource extends AbstractResource {
-
-    private static final Log LOG = LogFactory.getLog(UserResource.class);
 
     @GET
     @Path("{id}")
@@ -117,21 +112,15 @@ public class UserResource extends AbstractResource {
             // create charon-SCIM user endpoint and hand-over the request.
             UserResourceManager userResourceManager = new UserResourceManager();
 
-            // To initialize a thread local to get confirmation code of the user for ask password flow if notification
-            // mange by client application.
-            initializeAskPasswordConfirmationCodeThreadLocal(resourceString);
-
             SCIMResponse response = userResourceManager.create(resourceString, userManager,
                     attribute, excludedAttributes);
 
-            return SupportUtils.buildCreateUserResponse(response);
+            return SupportUtils.buildResponse(response);
 
         } catch (CharonException e) {
             return handleCharonException(e);
         } catch (FormatNotSupportedException e) {
             return handleFormatNotSupportedException(e);
-        } finally {
-            removeAskPasswordConfirmationCodeThreadLocal();
         }
     }
 
@@ -151,16 +140,6 @@ public class UserResource extends AbstractResource {
             }
             // obtain the user store manager
             UserManager userManager = IdentitySCIMManager.getInstance().getUserManager();
-
-            // Skipping this validation if the request comes from a sub organization.
-            if (!SCIMCommonUtils.isOrganization(getTenantDomain())) {
-                String superAdminID = AdminAttributeUtil.getSuperAdminID();
-                String loggedInUser = SCIMCommonUtils.getLoggedInUserID();
-                if (superAdminID.equals(id) && !loggedInUser.equals(id)) {
-                    LOG.debug("Do not have permission to delete SuperAdmin user.");
-                    return Response.status(Response.Status.FORBIDDEN).build();
-                }
-            }
 
             // create charon-SCIM user resource manager and hand-over the request.
             UserResourceManager userResourceManager = new UserResourceManager();
@@ -187,7 +166,8 @@ public class UserResource extends AbstractResource {
                             @QueryParam (SCIMProviderConstants.COUNT) Integer count,
                             @QueryParam (SCIMProviderConstants.SORT_BY) String sortBy,
                             @QueryParam (SCIMProviderConstants.SORT_ORDER) String sortOrder,
-                            @QueryParam (SCIMProviderConstants.DOMAIN) String domainName) {
+                            @QueryParam (SCIMProviderConstants.DOMAIN) String domainName,
+                            @QueryParam (SCIMProviderConstants.CURSOR) String cursor) {
 
         try {
             // defaults to application/scim+json.
@@ -197,11 +177,6 @@ public class UserResource extends AbstractResource {
             if(!isValidOutputFormat(format)){
                 String error = format + " is not supported.";
                 throw  new FormatNotSupportedException(error);
-            }
-
-            // Validates the count parameter if exists.
-            if (count != null && IdentityUtil.isSCIM2UserMaxItemsPerPageEnabled()) {
-                count = validateCountParameter(count);
             }
 
             // obtain the user store manager
@@ -215,9 +190,24 @@ public class UserResource extends AbstractResource {
 
             SCIMResponse scimResponse;
 
+            //Check pagination type.
+            String paginationType = ResourceManagerUtil.processPagination(startIndex, cursor);
+
+            if (SCIMProviderConstants.CURSOR.equals(paginationType)) {
+                //If the count is null when using a cursor pagination, set count to the value of
+                //pagination_default_count specified in the server config (charon-config.xml)
+                if (count == null) {
+                    count = Integer.parseInt(SCIMConfigProcessor.getInstance().
+                            getProperty(SCIMConfigConstants.PAGINATION_DEFAULT_COUNT));
+                }
+                scimResponse = userResourceManager.listWithGET(userManager, filter, cursor, count,
+                        sortBy, sortOrder, domainName, attribute, excludedAttributes);
+                return SupportUtils.buildResponse(scimResponse);
+            }
             scimResponse = userResourceManager.listWithGET(userManager, filter, startIndex, count,
                     sortBy, sortOrder, domainName, attribute, excludedAttributes);
             return SupportUtils.buildResponse(scimResponse);
+
         } catch (CharonException e) {
             return handleCharonException(e);
         } catch (FormatNotSupportedException e) {
@@ -350,16 +340,6 @@ public class UserResource extends AbstractResource {
             // obtain the user store manager
             UserManager userManager = IdentitySCIMManager.getInstance().getUserManager();
 
-            // Skipping this validation if the request comes from a sub organization.
-            if (!SCIMCommonUtils.isOrganization(getTenantDomain())) {
-                String superAdminID = AdminAttributeUtil.getSuperAdminID();
-                String loggedInUser = SCIMCommonUtils.getLoggedInUserID();
-                if (superAdminID.equals(id) && !loggedInUser.equals(id)) {
-                    LOG.debug("Do not have permission to patch SuperAdmin user.");
-                    return Response.status(Response.Status.FORBIDDEN).build();
-                }
-            }
-
             // Build Custom schema
             buildCustomSchema(userManager, getTenantId());
 
@@ -376,48 +356,5 @@ public class UserResource extends AbstractResource {
         } catch (FormatNotSupportedException e) {
             return handleFormatNotSupportedException(e);
         }
-    }
-
-    /**
-     * To initialize the Ask password confirmation code thread local if the ask password is true.
-     *
-     * @param resourceString Resource body.
-     */
-    private void initializeAskPasswordConfirmationCodeThreadLocal(String resourceString) {
-
-        if (SupportUtils.isAskPasswordFlow(resourceString)) {
-            IdentityUtil.threadLocalProperties.get()
-                    .put(IdentityRecoveryConstants.AP_CONFIRMATION_CODE_THREAD_LOCAL_PROPERTY,
-                            IdentityRecoveryConstants.AP_CONFIRMATION_CODE_THREAD_LOCAL_INITIAL_VALUE);
-        }
-    }
-
-    /**
-     * Remove the ask password confirmation code thread local.
-     */
-    private void removeAskPasswordConfirmationCodeThreadLocal() {
-
-        IdentityUtil.threadLocalProperties.get()
-                .remove(IdentityRecoveryConstants.AP_CONFIRMATION_CODE_THREAD_LOCAL_PROPERTY);
-    }
-
-    /**
-     * Validate the count query parameter.
-     *
-     * @param count Requested item count.
-     * @return Validated count parameter.
-     */
-    private int validateCountParameter(Integer count) {
-
-        int maximumItemsPerPage = IdentityUtil.getMaximumItemPerPage();
-        if (count > maximumItemsPerPage) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(String.format("Given limit exceeds the maximum limit. Therefore the limit is set to %s.",
-                        maximumItemsPerPage));
-            }
-            return maximumItemsPerPage;
-        }
-
-        return count;
     }
 }
