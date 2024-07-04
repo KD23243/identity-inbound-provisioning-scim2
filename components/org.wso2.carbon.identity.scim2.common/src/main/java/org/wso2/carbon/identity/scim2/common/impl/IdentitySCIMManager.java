@@ -194,6 +194,9 @@ public class IdentitySCIMManager {
             charonConfiguration.setCountValueForPagination
                     (Integer.parseInt(scimConfigProcessor.getProperty(SCIMCommonConstants.PAGINATION_DEFAULT_COUNT)));
             charonConfiguration.setCursorPaginationSupport(
+                    Boolean.parseBoolean(scimConfigProcessor
+                            .getProperty(SCIMCommonConstants.CURSOR_PAGINATION_SUPPORTED)));
+            charonConfiguration.setCursorPaginationSupport(
                     Boolean.parseBoolean(scimConfigProcessor.getProperty(SCIMCommonConstants
                             .CURSOR_PAGINATION_SUPPORTED)));
 
