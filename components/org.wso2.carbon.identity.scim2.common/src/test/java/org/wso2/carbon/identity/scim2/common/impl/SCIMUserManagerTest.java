@@ -103,7 +103,12 @@ import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
@@ -261,7 +266,7 @@ public class SCIMUserManagerTest {
              MockedStatic<ClaimMetadataHandler> claimMetadataHandlerMockedStatic = Mockito.mockStatic(ClaimMetadataHandler.class)) {
 
             // Mock SCIMUserSchemaExtensionBuilder
-            SCIMUserSchemaExtensionBuilder sb = Mockito.spy(new SCIMUserSchemaExtensionBuilder());
+            SCIMUserSchemaExtensionBuilder sb = spy(new SCIMUserSchemaExtensionBuilder());
             scimUserSchemaExtensionBuilderMockedStatic.when(SCIMUserSchemaExtensionBuilder::getInstance).thenReturn(sb);
             when(sb.getExtensionSchema()).thenReturn(mockedSCIMAttributeSchema);
 
@@ -1448,8 +1453,8 @@ public class SCIMUserManagerTest {
                     .thenReturn(scimToLocalClaimsMap);
 
             // Mock UserStoreManager and related methods
-            AbstractUserStoreManager mockedUserStoreManager = Mockito.mock(AbstractUserStoreManager.class);
-            AbstractUserStoreManager secondaryUserStoreManager = Mockito.mock(AbstractUserStoreManager.class);
+            AbstractUserStoreManager mockedUserStoreManager = mock(AbstractUserStoreManager.class);
+            AbstractUserStoreManager secondaryUserStoreManager = mock(AbstractUserStoreManager.class);
             SCIMUserManager scimUserManager = new SCIMUserManager(mockedUserStoreManager,
                     mockClaimMetadataManagementService, MultitenantConstants.SUPER_TENANT_DOMAIN_NAME);
             org.wso2.carbon.user.core.common.User user = mock(org.wso2.carbon.user.core.common.User.class);
@@ -1494,12 +1499,12 @@ public class SCIMUserManagerTest {
                     .thenReturn(scimToLocalClaimsMap);
 
             // Mock UserStoreManager and related methods
-            AbstractUserStoreManager mockedUserStoreManager = Mockito.mock(AbstractUserStoreManager.class);
+            AbstractUserStoreManager mockedUserStoreManager = mock(AbstractUserStoreManager.class);
             when(mockedUserStoreManager.getUserListWithID(anyString(), anyString(), anyString())).thenReturn(coreUsers);
 
             // Mock ApplicationManagementService
             try (MockedStatic<ApplicationManagementService> applicationManagementServiceMockedStatic = Mockito.mockStatic(ApplicationManagementService.class)) {
-                ApplicationManagementService applicationManagementService = Mockito.mock(ApplicationManagementService.class);
+                ApplicationManagementService applicationManagementService = mock(ApplicationManagementService.class);
                 applicationManagementServiceMockedStatic.when(ApplicationManagementService::getInstance)
                         .thenReturn(applicationManagementService);
                 when(applicationManagementService.getServiceProvider(anyString(), anyString())).thenReturn(null);
@@ -1532,14 +1537,14 @@ public class SCIMUserManagerTest {
                     .thenReturn(scimToLocalClaimsMap);
 
             // Mock UserStoreManager and related methods
-            AbstractUserStoreManager mockedUserStoreManager = Mockito.mock(AbstractUserStoreManager.class);
+            AbstractUserStoreManager mockedUserStoreManager = mock(AbstractUserStoreManager.class);
             when(mockedUserStoreManager.getUserWithID(anyString(), any(), anyString())).thenReturn(coreUser);
             when(mockedUserStoreManager.getSecondaryUserStoreManager("DomainName")).thenReturn(mockedUserStoreManager);
             when(mockedUserStoreManager.isSCIMEnabled()).thenReturn(false);
 
             // Mock ApplicationManagementService
             try (MockedStatic<ApplicationManagementService> applicationManagementServiceMockedStatic = Mockito.mockStatic(ApplicationManagementService.class)) {
-                ApplicationManagementService applicationManagementService = Mockito.mock(ApplicationManagementService.class);
+                ApplicationManagementService applicationManagementService = mock(ApplicationManagementService.class);
                 applicationManagementServiceMockedStatic.when(ApplicationManagementService::getInstance)
                         .thenReturn(applicationManagementService);
                 when(applicationManagementService.getServiceProvider(anyString(), anyString())).thenReturn(null);
@@ -1571,12 +1576,12 @@ public class SCIMUserManagerTest {
                     .thenReturn(scimToLocalClaimsMap);
 
             // Mock UserStoreManager and related methods
-            AbstractUserStoreManager mockedUserStoreManager = Mockito.mock(AbstractUserStoreManager.class);
+            AbstractUserStoreManager mockedUserStoreManager = mock(AbstractUserStoreManager.class);
             when(mockedUserStoreManager.getUserWithID(anyString(), any(), anyString())).thenReturn(coreUser);
 
             // Mock ApplicationManagementService
             try (MockedStatic<ApplicationManagementService> applicationManagementServiceMockedStatic = Mockito.mockStatic(ApplicationManagementService.class)) {
-                ApplicationManagementService applicationManagementService = Mockito.mock(ApplicationManagementService.class);
+                ApplicationManagementService applicationManagementService = mock(ApplicationManagementService.class);
                 applicationManagementServiceMockedStatic.when(ApplicationManagementService::getInstance)
                         .thenReturn(applicationManagementService);
 
@@ -1604,12 +1609,12 @@ public class SCIMUserManagerTest {
         user.setUserName("testUser");
 
         // Mock UserStoreManager and related methods
-        AbstractUserStoreManager mockedUserStoreManager = Mockito.mock(AbstractUserStoreManager.class);
+        AbstractUserStoreManager mockedUserStoreManager = mock(AbstractUserStoreManager.class);
         when(mockedUserStoreManager.getSecondaryUserStoreManager(anyString())).thenReturn(null);
 
         // Mock ApplicationManagementService
         try (MockedStatic<ApplicationManagementService> applicationManagementServiceMockedStatic = Mockito.mockStatic(ApplicationManagementService.class)) {
-            ApplicationManagementService applicationManagementService = Mockito.mock(ApplicationManagementService.class);
+            ApplicationManagementService applicationManagementService = mock(ApplicationManagementService.class);
             applicationManagementServiceMockedStatic.when(ApplicationManagementService::getInstance)
                     .thenReturn(applicationManagementService);
 
@@ -1636,16 +1641,16 @@ public class SCIMUserManagerTest {
         user.setUserName("testUser");
 
         // Mock UserStoreManager and related methods
-        AbstractUserStoreManager mockedUserStoreManager = Mockito.mock(AbstractUserStoreManager.class);
+        AbstractUserStoreManager mockedUserStoreManager = mock(AbstractUserStoreManager.class);
         when(mockedUserStoreManager.getSecondaryUserStoreManager(anyString())).thenReturn(secondaryUserStoreManager);
 
         // Mock secondaryUserStoreManager
-        AbstractUserStoreManager secondaryUserStoreManager = Mockito.mock(AbstractUserStoreManager.class);
+        AbstractUserStoreManager secondaryUserStoreManager = mock(AbstractUserStoreManager.class);
         when(secondaryUserStoreManager.isSCIMEnabled()).thenReturn(false);
 
         // Mock ApplicationManagementService
         try (MockedStatic<ApplicationManagementService> applicationManagementServiceMockedStatic = Mockito.mockStatic(ApplicationManagementService.class)) {
-            ApplicationManagementService applicationManagementService = Mockito.mock(ApplicationManagementService.class);
+            ApplicationManagementService applicationManagementService = mock(ApplicationManagementService.class);
             applicationManagementServiceMockedStatic.when(ApplicationManagementService::getInstance)
                     .thenReturn(applicationManagementService);
 
@@ -1692,18 +1697,18 @@ public class SCIMUserManagerTest {
             identityUtilMockedStatic.when(() -> IdentityUtil.extractDomainFromName(anyString())).thenCallRealMethod();
 
             // Mock ApplicationManagementService
-            ApplicationManagementService applicationManagementService = Mockito.mock(ApplicationManagementService.class);
+            ApplicationManagementService applicationManagementService = mock(ApplicationManagementService.class);
             Mockito.when(ApplicationManagementService.getInstance()).thenReturn(applicationManagementService);
             Mockito.when(applicationManagementService.getServiceProvider(anyString(), anyString())).thenReturn(null);
 
             // Mock UserStoreManager and related methods
-            AbstractUserStoreManager mockedUserStoreManager = Mockito.mock(AbstractUserStoreManager.class);
+            AbstractUserStoreManager mockedUserStoreManager = mock(AbstractUserStoreManager.class);
             Mockito.when(mockedUserStoreManager.isExistingUserWithID(anyString())).thenReturn(true);
             Mockito.when(mockedUserStoreManager.isExistingUser(anyString())).thenReturn(true);
             Mockito.when(mockedUserStoreManager.getUserList(anyString(), anyString(), Mockito.nullable(String.class))).thenReturn(existingUserList);
 
             // Mock secondary user store manager
-            AbstractUserStoreManager secondaryUserStoreManager = Mockito.mock(AbstractUserStoreManager.class);
+            AbstractUserStoreManager secondaryUserStoreManager = mock(AbstractUserStoreManager.class);
             Mockito.when(mockedUserStoreManager.getSecondaryUserStoreManager(anyString())).thenReturn(secondaryUserStoreManager);
             Mockito.when(secondaryUserStoreManager.isSCIMEnabled()).thenReturn(true);
 
@@ -1738,7 +1743,7 @@ public class SCIMUserManagerTest {
 
             // Mock static methods for ApplicationManagementService
             try (MockedStatic<ApplicationManagementService> applicationManagementServiceMockedStatic = Mockito.mockStatic(ApplicationManagementService.class)) {
-                ApplicationManagementService applicationManagementService = Mockito.mock(ApplicationManagementService.class);
+                ApplicationManagementService applicationManagementService = mock(ApplicationManagementService.class);
                 applicationManagementServiceMockedStatic.when(ApplicationManagementService::getInstance)
                         .thenReturn(applicationManagementService);
                 when(applicationManagementService.getServiceProvider(anyString(), anyString())).thenReturn(null);
@@ -1751,7 +1756,7 @@ public class SCIMUserManagerTest {
                             .thenReturn(scimToLocalClaimMappings);
 
                     // Mock UserStoreManager and related methods
-                    AbstractUserStoreManager mockedUserStoreManager = Mockito.mock(AbstractUserStoreManager.class);
+                    AbstractUserStoreManager mockedUserStoreManager = mock(AbstractUserStoreManager.class);
                     when(mockedUserStoreManager.getUserList(anyString(), anyString(), anyString())).thenReturn(null);
                     when(mockedUserStoreManager.getSecondaryUserStoreManager(anyString()))
                             .thenReturn(secondaryUserStoreManager);
