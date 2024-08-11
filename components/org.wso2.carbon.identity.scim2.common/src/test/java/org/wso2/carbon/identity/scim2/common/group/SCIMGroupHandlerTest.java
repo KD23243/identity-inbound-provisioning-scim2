@@ -21,9 +21,8 @@ package org.wso2.carbon.identity.scim2.common.group;
 import org.apache.commons.lang.StringUtils;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.testng.PowerMockTestCase;
+import org.mockito.MockedConstruction;
+import org.mockito.Mockito;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
@@ -45,24 +44,14 @@ import java.util.Set;
 import java.util.HashSet;
 
 import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.anyMap;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 import static org.mockito.MockitoAnnotations.initMocks;
-import static org.powermock.api.mockito.PowerMockito.mock;
-import static org.powermock.api.mockito.PowerMockito.mockStatic;
-import static org.powermock.api.mockito.PowerMockito.when;
-import static org.powermock.api.mockito.PowerMockito.whenNew;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
 
-@PrepareForTest({IdentityDatabaseUtil.class, StringUtils.class, SCIMCommonUtils.class, SCIMGroupHandler.class,
-                 IdentityTenantUtil.class})
-@PowerMockIgnore("java.sql.*")
-public class SCIMGroupHandlerTest extends PowerMockTestCase {
+public class SCIMGroupHandlerTest {
 
     @Mock
     private GroupDAO mockedGroupDAO;
@@ -77,6 +66,8 @@ public class SCIMGroupHandlerTest extends PowerMockTestCase {
     public void setUp() throws Exception {
         initMocks(this);
     }
+
+    MockedConstruction<GroupDAO> mockedConstruction;
 
     @Test
     public void testAddMandatoryAttributes() throws Exception {
@@ -134,7 +125,6 @@ public class SCIMGroupHandlerTest extends PowerMockTestCase {
     public void testCreateSCIMAttributesExceptions() throws Exception {
         mockStatic(IdentityDatabaseUtil.class);
         mockStatic(SCIMCommonUtils.class);
-        ResultSet resultSet = mock(ResultSet.class);
 
         Group group = new Group();
         Date date = new Date();
@@ -143,18 +133,29 @@ public class SCIMGroupHandlerTest extends PowerMockTestCase {
         group.setLocation("LOCATION_URI");
         group.setDisplayName("testDisplayName");
 
-        when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
-        when(connection.prepareStatement(anyString())).thenReturn(mockedPreparedStatement);
-        when(mockedPreparedStatement.executeQuery()).thenReturn(resultSet);
-        when(resultSet.next()).thenReturn(true);
-        whenNew(GroupDAO.class).withNoArguments().thenReturn(mockedGroupDAO);
-        when(mockedGroupDAO.isExistingGroup(SCIMCommonUtils.getGroupNameWithDomain("ALREADY_EXISTANT_GROUP_NAME"), 1)).thenReturn(false);
+        try (MockedConstruction<GroupDAO> mockedConstruction = Mockito.mockConstruction(
+                GroupDAO.class,
+                (mock, context) -> {
+                    when(mock.isExistingGroup(SCIMCommonUtils.getGroupNameWithDomain("ALREADY_EXISTANT_GROUP_NAME"), 1))
+                            .thenReturn(false);
+                })) {
 
-        SCIMGroupHandler scimGroupHandler = new SCIMGroupHandler(1);
-        ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-        scimGroupHandler.createSCIMAttributes(group);
-        verify(mockedGroupDAO).addSCIMGroupAttributes(anyInt(), argumentCaptor.capture(), anyMap());
-        assertEquals("testDisplayName", argumentCaptor.getValue());
+            ResultSet resultSet = mock(ResultSet.class);
+
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+            when(connection.prepareStatement(anyString())).thenReturn(mockedPreparedStatement);
+            when(mockedPreparedStatement.executeQuery()).thenReturn(resultSet);
+            when(resultSet.next()).thenReturn(true);
+
+            SCIMGroupHandler scimGroupHandler = new SCIMGroupHandler(1);
+            ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+            scimGroupHandler.createSCIMAttributes(group);
+
+            // Verify that the mocked GroupDAO instance is used
+            GroupDAO mockedGroupDAO = mockedConstruction.constructed().get(0);
+            verify(mockedGroupDAO).addSCIMGroupAttributes(anyInt(), argumentCaptor.capture(), anyMap());
+            assertEquals("testDisplayName", argumentCaptor.getValue());
+        }
     }
 
     @Test
@@ -206,31 +207,38 @@ public class SCIMGroupHandlerTest extends PowerMockTestCase {
 
     @Test
     public void testGetGroupWithAttributesSecondScenario() throws Exception {
-        Group group = new Group();
-        ResultSet resultSet = mock(ResultSet.class);
         mockStatic(IdentityDatabaseUtil.class);
         mockStatic(IdentityTenantUtil.class);
         mockStatic(SCIMCommonUtils.class);
 
+        Group group = new Group();
+        ResultSet resultSet = mock(ResultSet.class);
+
         Date today = Calendar.getInstance().getTime();
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
-        Map<String, String> attributes = new HashMap<String, String>();
+        Map<String, String> attributes = new HashMap<>();
         attributes.put("urn:ietf:params:scim:schemas:core:2.0:id", "100");
         attributes.put("urn:ietf:params:scim:schemas:core:2.0:meta.created", formatter.format(today));
         attributes.put("urn:ietf:params:scim:schemas:core:2.0:meta.lastModified", formatter.format(today));
         attributes.put("urn:ietf:params:scim:schemas:core:2.0:meta.location",
                 "https://localhost:9443/t/TENANT_DOMAIN/Groups/100");
 
-        when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
-        when(connection.prepareStatement(anyString())).thenReturn(mockedPreparedStatement);
-        when(resultSet.next()).thenReturn(true);
-        when(mockedPreparedStatement.executeQuery()).thenReturn(resultSet);
-        when(mockedGroupDAO.isExistingGroup("EXISTING_GROUP_NAME", 1)).thenReturn(true);
-        whenNew(GroupDAO.class).withNoArguments().thenReturn(mockedGroupDAO);
-        when(mockedGroupDAO.getSCIMGroupAttributes(anyInt(), anyString())).thenReturn(attributes);
-        when(IdentityTenantUtil.getTenantDomain(1)).thenReturn("TENANT_DOMAIN");
-        when(SCIMCommonUtils.getSCIMGroupURL()).thenReturn("https://localhost:9443/t/TENANT_DOMAIN/Groups");
-        assertEquals(new SCIMGroupHandler(1).getGroupWithAttributes(group, "EXISTING_GROUP_NAME"), group);
+        try (MockedConstruction<GroupDAO> mockedConstruction = Mockito.mockConstruction(
+                GroupDAO.class,
+                (mock, context) -> {
+                    when(mock.isExistingGroup("EXISTING_GROUP_NAME", 1)).thenReturn(true);
+                    when(mock.getSCIMGroupAttributes(anyInt(), anyString())).thenReturn(attributes);
+                })) {
+
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+            when(connection.prepareStatement(anyString())).thenReturn(mockedPreparedStatement);
+            when(mockedPreparedStatement.executeQuery()).thenReturn(resultSet);
+            when(resultSet.next()).thenReturn(true);
+            when(IdentityTenantUtil.getTenantDomain(1)).thenReturn("TENANT_DOMAIN");
+            when(SCIMCommonUtils.getSCIMGroupURL()).thenReturn("https://localhost:9443/t/TENANT_DOMAIN/Groups");
+
+            assertEquals(new SCIMGroupHandler(1).getGroupWithAttributes(group, "EXISTING_GROUP_NAME"), group);
+        }
     }
 
     @Test
@@ -253,55 +261,74 @@ public class SCIMGroupHandlerTest extends PowerMockTestCase {
 
     @Test
     public void testDeleteGroupAttributes() throws Exception {
-        ResultSet resultSet = mock(ResultSet.class);
         mockStatic(IdentityDatabaseUtil.class);
         mockStatic(SCIMCommonUtils.class);
 
-        when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
-        when(connection.prepareStatement(anyString())).thenReturn(mockedPreparedStatement);
-        when(mockedPreparedStatement.executeQuery()).thenReturn(resultSet);
-        whenNew(GroupDAO.class).withNoArguments().thenReturn(mockedGroupDAO);
-        when(resultSet.next()).thenReturn(true);
-        when(mockedGroupDAO.isExistingGroup(anyString(), anyInt())).thenReturn(true);
+        ResultSet resultSet = mock(ResultSet.class);
 
-        SCIMGroupHandler scimGroupHandler = new SCIMGroupHandler(1);
-        ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-        scimGroupHandler.deleteGroupAttributes("GROUP_DELETABLE");
-        verify(mockedGroupDAO).removeSCIMGroup(anyInt(), argumentCaptor.capture());
-        assertEquals(argumentCaptor.getValue(),"GROUP_DELETABLE");
+        try (MockedConstruction<GroupDAO> mockedConstruction = Mockito.mockConstruction(
+                GroupDAO.class,
+                (mock, context) -> {
+                    when(mock.isExistingGroup(anyString(), anyInt())).thenReturn(true);
+                })) {
 
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+            when(connection.prepareStatement(anyString())).thenReturn(mockedPreparedStatement);
+            when(mockedPreparedStatement.executeQuery()).thenReturn(resultSet);
+            when(resultSet.next()).thenReturn(true);
+
+            SCIMGroupHandler scimGroupHandler = new SCIMGroupHandler(1);
+            ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+            scimGroupHandler.deleteGroupAttributes("GROUP_DELETABLE");
+
+            // Retrieve the mock from MockedConstruction
+            GroupDAO mockedGroupDAO = mockedConstruction.constructed().get(0);
+            verify(mockedGroupDAO).removeSCIMGroup(anyInt(), argumentCaptor.capture());
+            assertEquals("GROUP_DELETABLE", argumentCaptor.getValue());
+        }
     }
 
     @Test
     public void testUpdateRoleName() throws Exception {
-        ResultSet resultSet = mock(ResultSet.class);
         mockStatic(IdentityDatabaseUtil.class);
         mockStatic(SCIMCommonUtils.class);
 
-        when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
-        whenNew(GroupDAO.class).withNoArguments().thenReturn(mockedGroupDAO);
-        when(mockedGroupDAO.isExistingGroup(anyString(), anyInt())).thenReturn(true);
+        try (MockedConstruction<GroupDAO> mockedConstruction = Mockito.mockConstruction(
+                GroupDAO.class,
+                (mock, context) -> {
+                    when(mock.isExistingGroup(anyString(), anyInt())).thenReturn(true);
+                })) {
 
-        SCIMGroupHandler scimGroupHandler = new SCIMGroupHandler(1);
-        ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-        scimGroupHandler.updateRoleName("EXISTENT_ROLE_NAME", "NEW_ROLE_NAME");
-        verify(mockedGroupDAO).updateRoleName(anyInt(),argumentCaptor.capture(),anyString());
-        assertEquals(argumentCaptor.getValue(),"EXISTENT_ROLE_NAME");
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+            SCIMGroupHandler scimGroupHandler = new SCIMGroupHandler(1);
+            ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+            scimGroupHandler.updateRoleName("EXISTENT_ROLE_NAME", "NEW_ROLE_NAME");
+
+            // Retrieve the mock from MockedConstruction
+            GroupDAO mockedGroupDAO = mockedConstruction.constructed().get(0);
+            verify(mockedGroupDAO).updateRoleName(anyInt(), argumentCaptor.capture(), anyString());
+            assertEquals("EXISTENT_ROLE_NAME", argumentCaptor.getValue());
+        }
     }
 
     @Test(expectedExceptions = IdentitySCIMException.class)
     public void testUpdateRoleNameNonExistent() throws Exception {
-        ResultSet resultSet = mock(ResultSet.class);
         mockStatic(IdentityDatabaseUtil.class);
         mockStatic(SCIMCommonUtils.class);
 
-        when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
-        whenNew(GroupDAO.class).withNoArguments().thenReturn(mockedGroupDAO);
-        when(mockedGroupDAO.isExistingGroup("NON_EXISTENT_ROLE_NAME", 1)).thenReturn(false);
+        try (MockedConstruction<GroupDAO> mockedConstruction = Mockito.mockConstruction(
+                GroupDAO.class,
+                (mock, context) -> {
+                    when(mock.isExistingGroup("NON_EXISTENT_ROLE_NAME", 1)).thenReturn(false);
+                })) {
 
-        SCIMGroupHandler scimGroupHandler = new SCIMGroupHandler(1);
-        scimGroupHandler.updateRoleName("NON_EXISTENT_ROLE_NAME", "NEW_ROLE_NAME");
-        // This method is to test the throwing of an IdentitySCIMException, hence no assertion.
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+            SCIMGroupHandler scimGroupHandler = new SCIMGroupHandler(1);
+            scimGroupHandler.updateRoleName("NON_EXISTENT_ROLE_NAME", "NEW_ROLE_NAME");
+            // This method is to test the throwing of an IdentitySCIMException, hence no assertion.
+        }
     }
 
     @Test
