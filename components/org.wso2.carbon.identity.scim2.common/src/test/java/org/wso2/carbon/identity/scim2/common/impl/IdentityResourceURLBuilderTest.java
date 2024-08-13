@@ -21,6 +21,7 @@ package org.wso2.carbon.identity.scim2.common.impl;
 import org.mockito.Mock;
 
 import org.mockito.MockedStatic;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -66,6 +67,16 @@ public class IdentityResourceURLBuilderTest {
         serviceURLBuilder.when(() -> ServiceURLBuilder.create()).thenReturn(mockServiceURLBuilder);
         when(mockServiceURLBuilder.addPath(anyString())).thenReturn(mockServiceURLBuilder);
         identityTenantUtil = mockStatic(IdentityTenantUtil.class);
+    }
+
+    @AfterMethod
+    public void tearDown() {
+        if (serviceURLBuilder != null) {
+            serviceURLBuilder.close();
+        }
+        if (identityTenantUtil != null) {
+            identityTenantUtil.close();
+        }
     }
 
     @DataProvider(name = "dataProviderForBuild")

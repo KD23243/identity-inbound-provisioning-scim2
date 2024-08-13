@@ -21,9 +21,11 @@ package org.wso2.carbon.identity.scim2.common.utils;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.scim2.common.internal.SCIMCommonComponentHolder;
@@ -59,6 +61,22 @@ private MockedStatic<IdentityTenantUtil> identityTenantUtil;
     @BeforeMethod
     public void setUp() throws Exception {
         adminAttributeUtil = new AdminAttributeUtil();
+        realmService = mock(RealmService.class);
+        userRealm = mock(UserRealm.class);
+        userStoreManager = mock(UserStoreManager.class);
+    }
+
+    @AfterMethod
+    public void tearDown() {
+        if (scimCommonComponentHolder != null) {
+            scimCommonComponentHolder.close();
+        }
+        if (claimsMgtUtil != null) {
+            claimsMgtUtil.close();
+        }
+        if (identityTenantUtil != null) {
+            identityTenantUtil.close();
+        }
     }
 
     @DataProvider(name = "testUpdateAdminUserData")
