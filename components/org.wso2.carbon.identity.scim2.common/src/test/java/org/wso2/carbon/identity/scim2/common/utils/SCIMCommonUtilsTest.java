@@ -20,6 +20,7 @@ package org.wso2.carbon.identity.scim2.common.utils;
 
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -71,20 +72,33 @@ public class SCIMCommonUtilsTest {
 
     @BeforeMethod
     public void setUp() throws Exception {
-        initMocks(this);
-        identityUtil = mockStatic(IdentityUtil.class);
-        userCoreUtil = mockStatic(UserCoreUtil.class);
-        identityTenantUtil = mockStatic(IdentityTenantUtil.class);
-        serviceURLBuilder = mockStatic(ServiceURLBuilder.class);
+        // Clean up any existing static mocks to avoid conflicts
+        if (identityUtil != null) identityUtil.close();
+        if (userCoreUtil != null) userCoreUtil.close();
+        if (identityTenantUtil != null) identityTenantUtil.close();
+        if (serviceURLBuilder != null) serviceURLBuilder.close();
+
+        // Initialize new mocks
+        identityUtil = Mockito.mockStatic(IdentityUtil.class);
+        userCoreUtil = Mockito.mockStatic(UserCoreUtil.class);
+        identityTenantUtil = Mockito.mockStatic(IdentityTenantUtil.class);
+        serviceURLBuilder = Mockito.mockStatic(ServiceURLBuilder.class);
+
+        // Initialize other mocks
+        DefaultServiceURLBuilder defaultServiceURLBuilder = Mockito.mock(DefaultServiceURLBuilder.class);
+        DefaultServiceURLBuilder defaultServiceURLBuilder1 = Mockito.mock(DefaultServiceURLBuilder.class);
+        ServiceURL serviceURL = Mockito.mock(ServiceURL.class);
+        ServiceURL serviceURL1 = Mockito.mock(ServiceURL.class);
+
+        // Configure the mocks
         identityUtil.when(() -> IdentityUtil.getServerURL(anyString(), anyBoolean(), anyBoolean())).thenReturn(SCIM_URL);
         identityUtil.when(() -> IdentityUtil.getPrimaryDomainName()).thenReturn(UserCoreConstants.PRIMARY_DEFAULT_DOMAIN_NAME);
         serviceURLBuilder.when(() -> ServiceURLBuilder.create()).thenReturn(defaultServiceURLBuilder);
-        when(defaultServiceURLBuilder.build()).thenReturn(serviceURL);
-        when(defaultServiceURLBuilder.addPath(SCIMCommonConstants.SCIM2_ENDPOINT)).thenReturn
-                (defaultServiceURLBuilder1);
-        when(defaultServiceURLBuilder1.build()).thenReturn(serviceURL1);
-        when(serviceURL1.getAbsolutePublicURL()).thenReturn("https://localhost:9443/scim2");
-        when(serviceURL.getAbsolutePublicURL()).thenReturn("https://localhost:9443");
+        Mockito.when(defaultServiceURLBuilder.build()).thenReturn(serviceURL);
+        Mockito.when(defaultServiceURLBuilder.addPath(SCIMCommonConstants.SCIM2_ENDPOINT)).thenReturn(defaultServiceURLBuilder1);
+        Mockito.when(defaultServiceURLBuilder1.build()).thenReturn(serviceURL1);
+        Mockito.when(serviceURL1.getAbsolutePublicURL()).thenReturn("https://localhost:9443/scim2");
+        Mockito.when(serviceURL.getAbsolutePublicURL()).thenReturn("https://localhost:9443");
         identityTenantUtil.when(() -> IdentityTenantUtil.getTenantDomainFromContext()).thenReturn("carbon.super");
     }
 
