@@ -71,6 +71,7 @@ public class AdminAttributeUtilTestForGroup {
     @BeforeMethod
     public void setUp() throws Exception {
         adminAttributeUtil = new AdminAttributeUtil();
+        scimCommonComponentHolder = mockStatic(SCIMCommonComponentHolder.class);
     }
 
     @DataProvider(name = "testUpdateAdminUserData")
@@ -93,7 +94,7 @@ public class AdminAttributeUtilTestForGroup {
     public void testUpdateAdminGroup(String domainName) throws Exception {
         String roleNameWithDomain = "TESTDOMAIN/admin";
 
-        scimCommonComponentHolder = mockStatic(SCIMCommonComponentHolder.class);
+
         claimsMgtUtil = mockStatic(ClaimsMgtUtil.class);
         identityTenantUtil = mockStatic(IdentityTenantUtil.class);
         userCoreUtil = mockStatic(UserCoreUtil.class);
