@@ -20,10 +20,15 @@ package org.wso2.carbon.identity.scim2.common.impl;
 
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import org.mockito.MockitoAnnotations;
+import org.mockito.quality.Strictness;
+import org.mockito.testng.MockitoSettings;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.testng.annotations.Listeners;
 import org.mockito.testng.MockitoTestNGListener;
+import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.scim2.common.internal.SCIMCommonComponentHolder;
 import org.wso2.carbon.identity.scim2.common.test.utils.CommonTestUtils;
@@ -53,6 +58,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
  * Contains the unit test cases for IdentitySCIMManager.
  */
 @Listeners(MockitoTestNGListener.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class IdentitySCIMManagerTest {
 
     @Mock
@@ -78,7 +84,7 @@ public class IdentitySCIMManagerTest {
 
     @BeforeMethod
     public void setUp() throws Exception {
-
+        MockitoAnnotations.openMocks(this);
         scimCommonUtils = mockStatic(SCIMCommonUtils.class);
         scimCommonUtils.when(() -> SCIMCommonUtils.getSCIMUserURL()).thenReturn("http://scimUserUrl:9443");
 
@@ -91,8 +97,6 @@ public class IdentitySCIMManagerTest {
         scimConfigProcessor.buildConfigFromFile(filePath);
         identitySCIMManager = IdentitySCIMManager.getInstance();
 
-        scimCommonComponentHolder = mockStatic(SCIMCommonComponentHolder.class);
-
         when(realmService.getTenantManager()).thenReturn(mockedTenantManager);
         when(mockedTenantManager.getTenantId(anyString())).thenReturn(-1234);
         when(realmService.getTenantUserRealm(anyInt())).thenReturn(mockedUserRealm);
@@ -100,6 +104,13 @@ public class IdentitySCIMManagerTest {
         when(mockedUserRealm.getClaimManager()).thenReturn(mockedClaimManager);
         when(mockedUserRealm.getUserStoreManager()).thenReturn(mockedUserStoreManager);
         CommonTestUtils.initPrivilegedCarbonContext();
+    }
+
+    @AfterMethod
+    public void tearDown() {
+        scimCommonComponentHolder.close();
+        scimCommonUtils.close();
+        System.clearProperty(CarbonBaseConstants.CARBON_HOME);
     }
 
     @Test

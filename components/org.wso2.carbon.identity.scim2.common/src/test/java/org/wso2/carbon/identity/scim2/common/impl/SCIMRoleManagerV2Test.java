@@ -20,10 +20,12 @@ package org.wso2.carbon.identity.scim2.common.impl;
 
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.core.ServiceURLBuilder;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.role.v2.mgt.core.RoleManagementService;
@@ -65,17 +67,17 @@ public class SCIMRoleManagerV2Test {
 
     private MockedStatic<IdentityUtil> identityUtil;
 
-    @BeforeClass
-    public void setUpClass() {
-
-        initMocks(this);
-    }
-
     @BeforeMethod
     public void setUpMethod() {
-
+        initMocks(this);
         identityUtil = mockStatic(IdentityUtil.class);
         scimRoleManagerV2 = new SCIMRoleManagerV2(roleManagementService, SAMPLE_TENANT_DOMAIN);
+    }
+
+    @AfterMethod
+    public void tearDown() {
+        identityUtil.close();
+        System.clearProperty(CarbonBaseConstants.CARBON_HOME);
     }
 
     @DataProvider(name = "scimOperations")
